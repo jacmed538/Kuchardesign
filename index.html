@@ -290,7 +290,7 @@
     <section id="rezerwacja">
         <h2 class="section-title">Zarezerwuj Termin Pomiaru</h2>
         <div class="booking-container">
-            <form id="booking-form" onsubmit="handleBookingSubmit(event)">
+            <form id="booking-form" onsubmit="return handleBookingSubmit(event)">
                 <div class="form-grid">
                     
                     <div class="form-group">
@@ -365,7 +365,7 @@
                 <ul style="margin-left: 1.2rem; margin-top: 0.5rem;">
                     <li>Dokładnie zmierzy pomieszczenie kuchenne.</li>
                     <li>Przedstawi próbki materiałów, blatów i frontów.</li>
-                    <li>Mówi wstępne rozmieszczenie sprzętów AGD.</li>
+                    <li>Omówi wstępne rozmieszczenie sprzętów AGD.</li>
                     <li>Przygotuje bezpłatną wycenę.</li>
                 </ul>
             </div>
@@ -377,12 +377,10 @@
         <p>&copy; 2026 KucharDesign - Meble Kuchenne na Wymiar | Gliwice, ul. Perseusza | Tel: 536 058 214</p>
     </footer>
 
-    <!-- JavaScript: Logika Rezerwacji i Google Apps Script Integration -->
+    <!-- JavaScript -->
     <script>
-        // WALIDACJA DATY: Tylko przyszłe daty, wykluczenie Niedziel (Dzień 0)
+        // Walidacja daty: ograniczenie do przyszłych dat i wykluczenie Niedziel
         const dateInput = document.getElementById('booking-date');
-        
-        // Ustawienie minimalnej daty na jutro
         const today = new Date();
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -390,29 +388,27 @@
 
         function validateDate() {
             const selectedDate = new Date(dateInput.value);
-            const dayOfWeek = selectedDate.getDay(); // 0 = Niedziela
-
-            if (dayOfWeek === 0) {
+            if (selectedDate.getDay() === 0) {
                 alert('W niedziele nie wykonujemy pomiarów. Prosimy wybrać inny dzień (Poniedziałek - Sobota).');
                 dateInput.value = '';
             }
         }
 
-        // INTEGRACJA Z GOOGLE SHEETS / GOOGLE DRIVE / GMAIL
-        // TUTAJ WKLEJ SWÓJ ADRES Z GOOGLE APPS SCRIPT (Web App URL)
-        const GOOGLE_SCRIPT_URL = 'TUTAJ_WKLEJ_SWOJ_URL_Z_GOOGLE_APPS_SCRIPT';
+        // Twoja Aplikacja Google Apps Script
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzjAQfPHd1WUSsL2ZFtq3PxAf9aZ4WecSxm2lQKY1BDShHn0n7b2tD-hw2_mtgaKf-rnA/exec';
 
         async function handleBookingSubmit(event) {
+            // Blokujemy domyślne przesyłanie i odświeżanie formularza
             event.preventDefault();
             
             const submitBtn = document.getElementById('submit-btn');
             submitBtn.disabled = true;
-            submitBtn.innerText = 'Trwa wysyłanie i rezerwacja...';
+            submitBtn.innerText = 'Trwa wysyłanie... Prosimy czekać.';
 
             const form = document.getElementById('booking-form');
             const fileInput = document.getElementById('files');
             
-            // Konwersja plików do formatu Base64 (aby przesłać do Google Drive przez skrypt)
+            // Konwersja plików do Base64
             let filesData = [];
             if (fileInput.files.length > 0) {
                 for (let i = 0; i < fileInput.files.length; i++) {
@@ -426,7 +422,7 @@
                 }
             }
 
-            // Przygotowanie danych do wysłania
+            // Przygotowanie danych
             const formData = new FormData(form);
             const dataPayload = {
                 fullname: formData.get('fullname'),
@@ -439,44 +435,31 @@
                 fileData: JSON.stringify(filesData)
             };
 
-            // Jeśli URL nie został jeszcze ustawiony, pokażmy demonstracyjny komunikat sukcesu
-            if (GOOGLE_SCRIPT_URL === 'https://script.google.com/macros/s/AKfycbzitwYIwlhHSAVwpTbtgQREj9zTA1aTtiQrqaaOgfYud1yON1IY-SVPYpb4fUJr3Ax0Qg/exec') {
-                setTimeout(() => {
-                    alert('Rezerwacja przyjęta testowo!
-
-Aby dane zapisywały się w Google Sheets, Google Drive oraz wysyłały e-mail z potwierdzeniem, podepnij skrypt Google Apps Script według załączonej instrukcji.');
-                    form.reset();
-                    submitBtn.disabled = false;
-                    submitBtn.innerText = 'Zarezerwuj Termin i Wyślij Zgłoszenie';
-                }, 1000);
-                return;
-            }
-
-            // Wysłanie danych do Google Apps Script
             try {
-                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                // Wysłanie danych w tle (mode: no-cors zapobiega odświeżeniu i błędom CORS)
+                await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
                     body: new URLSearchParams(dataPayload)
                 });
                 
-                const result = await response.json();
-                if (result.result === 'success') {
-                    alert('Dziękujemy! Rezerwacja została zapisana. Potwierdzenie wysłaliśmy na Twój e-mail.');
-                    form.reset();
-                } else {
-                    alert('Wystąpił błąd podczas zapisywania rezerwacji. Prosimy o kontakt telefoniczny pod nr: 536 058 214.');
-                }
+                alert('Dziękujemy! Rezerwacja została wysłana. Wkrótce otrzymasz e-mail z potwierdzeniem.');
+                form.reset();
+
             } catch (error) {
                 console.error('Error:', error);
-                alert('Zgłoszenie wysłane! W razie braku maila z potwierdzeniem skontaktujemy się telefonicznie.');
-                form.reset();
+                alert('Wystąpił błąd podczas wysyłania. Prosimy o kontakt telefoniczny pod nr: 536 058 214.');
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerText = 'Zarezerwuj Termin i Wyślij Zgłoszenie';
             }
+
+            return false;
         }
 
-        // Pomocnicza funkcja do konwersji pliku do Base64
         function convertFileToBase64(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
